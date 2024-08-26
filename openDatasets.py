@@ -48,6 +48,7 @@ def openArtificialDataset():
         for line in file:
             splt = line.split(' ')[-1]
             label = int(line.split(' ')[-1].strip())
+            originalLabel.append(int(line.split(' ')[-1].strip()))
             y.append(label)
             x.append([float(feature) for feature in line.split(' ')[0:2]])
 

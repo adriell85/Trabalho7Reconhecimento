@@ -8,23 +8,22 @@ class BayesianGaussianMixtureClassifier:
         self.tol = tol
         self.models = {}
         self.priors = {}
+        self.regularization = 1e-6
 
     def _initialize_parameters(self, X):
-        """ Initialize the parameters for the Gaussian Mixture Model. """
         n_samples, n_features = X.shape
         np.random.seed(42)
 
-        # Initialize means randomly from the data points
+
         means = X[np.random.choice(n_samples, self.n_components, replace=False)]
-        # Initialize covariances to identity matrices
+
         covariances = np.array([np.eye(n_features) for _ in range(self.n_components)])
-        # Initialize mixing coefficients uniformly
+
         mixing_coeffs = np.ones(self.n_components) / self.n_components
 
         return means, covariances, mixing_coeffs
 
     def _e_step(self, X, means, covariances, mixing_coeffs):
-        """ Perform the expectation step. """
         n_samples = X.shape[0]
         responsibilities = np.zeros((n_samples, self.n_components))
 
@@ -38,7 +37,6 @@ class BayesianGaussianMixtureClassifier:
         return responsibilities
 
     def _m_step(self, X, responsibilities):
-        """ Perform the maximization step. """
         n_samples, n_features = X.shape
         means = np.zeros((self.n_components, n_features))
         covariances = np.zeros((self.n_components, n_features, n_features))
@@ -48,41 +46,40 @@ class BayesianGaussianMixtureClassifier:
             resp = responsibilities[:, k]
             total_resp = resp.sum()
 
-            # Update mean
+
             means[k] = (X * resp[:, np.newaxis]).sum(axis=0) / total_resp
 
-            # Update covariance
+
             diff = X - means[k]
             covariances[k] = np.dot(resp * diff.T, diff) / total_resp
+            covariances[k] += np.eye(n_features) * self.regularization
 
-            # Update mixing coefficient
+
             mixing_coeffs[k] = total_resp / n_samples
 
         return means, covariances, mixing_coeffs
 
     def _log_likelihood(self, X, means, covariances, mixing_coeffs):
-        """ Calculate the log likelihood of the data given the parameters. """
         n_samples = X.shape[0]
         log_likelihood = 0
 
         for k in range(self.n_components):
             log_likelihood += mixing_coeffs[k] * self._multivariate_gaussian(X, means[k], covariances[k])
 
-        return np.sum(np.log(log_likelihood))
+        return np.sum(np.log(log_likelihood + 1e-10))
 
     def _multivariate_gaussian(self, X, mean, covariance):
-        """ Multivariate Gaussian distribution. """
         n_features = X.shape[1]
         diff = X - mean
         inv_covariance = np.linalg.inv(covariance)
         exp_term = np.exp(-0.5 * np.sum(diff @ inv_covariance * diff, axis=1))
         norm_const = np.sqrt((2 * np.pi) ** n_features * np.linalg.det(covariance))
 
-        return exp_term / norm_const
+        return exp_term / (norm_const + 1e-10)
 
     def fit(self, X, y, baseName='', isruningTrain=False, iteration=0):
-        self.models = {}  # Reset the models
-        self.priors = {}  # Reset the priors
+        self.models = {}
+        self.priors = {}
 
         X = np.array(X)
         y = np.array(y)
@@ -139,7 +136,6 @@ class BayesianGaussianMixtureClassifier:
         return np.array(predictions)
 
     def _plot_clusters(self, X, labels, baseName, iteration, phase):
-        # Your plotting code here
         pass
 
     def evaluate(self, X, y):
